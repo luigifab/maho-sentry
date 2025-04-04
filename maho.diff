@@ -1,0 +1,445 @@
+# multiparts diff for Maho 25.1.0
+# ##########################################################################################################################################
+# this is OpenMage PR 3596
+diff --git a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Block/Abstract.php b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Block/Abstract.php
+index 6940627294..579fde0368 100644
+--- a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Block/Abstract.php
++++ b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Block/Abstract.php
+@@ -184,6 +184,13 @@
+      */
+     protected $_app;
+ 
++    /**
++     * To not render the same block multiple times with getChildHtml()
++     *
++     * @var bool
++     */
++    protected $_isRendered = false;
++
+     /**
+      * Translation helper instance
+      *
+@@ -580,7 +587,9 @@
+             }
+             $out = '';
+             foreach ($children as $child) {
+-                $out .= $this->_getChildHtml($child->getBlockAlias(), $useCache);
++                if (!$child->isRendered()) {
++                    $out .= $this->_getChildHtml($child->getBlockAlias(), $useCache);
++                }
+             }
+             return $out;
+         } else {
+@@ -915,6 +924,8 @@
+         if (Mage::getStoreConfig('advanced/modules_disable_output/' . $this->getModuleName())) {
+             return '';
+         }
++
++        $this->_isRendered = true;
+         $html = $this->_loadCache();
+         if ($html === false) {
+             $translate = Mage::getSingleton('core/translate');
+@@ -1701,4 +1712,14 @@
+ 
+         return Mage::helper($helperAlias)->isModuleOutputEnabled($moduleName);
+     }
++
++    /**
++     * Flag
++     *
++     * @return bool
++     */
++    public function isRendered()
++    {
++        return $this->_isRendered;
++    }
+ }
+diff --git a/zzx/vendor/mahocommerce/maho/app/design/adminhtml/default/default/layout/main.xml b/zzx/vendor/mahocommerce/maho/app/design/adminhtml/default/default/layout/main.xml
+index 54f1d7675e..94037e639e 100644
+--- a/zzx/vendor/mahocommerce/maho/app/design/adminhtml/default/default/layout/main.xml
++++ b/zzx/vendor/mahocommerce/maho/app/design/adminhtml/default/default/layout/main.xml
+@@ -69,6 +69,7 @@
+                 <action method="addItem"><type>js</type><name>mage/adminhtml/rules.js</name><params/><if/><condition>can_load_rules_js</condition></action>
+ 
+                 <action method="addItem"><type>js</type><name>mage/adminhtml/wysiwyg/tinymce/setup.js</name><params/><if/><condition>can_load_tiny_mce</condition></action>
++                <block type="adminhtml/text_list" name="before_cssjs"/>
+             </block>
+ 
+             <block type="adminhtml/page_notices" name="global_notices" as="global_notices" template="page/notices.phtml" />
+diff --git a/zzx/vendor/mahocommerce/maho/app/design/adminhtml/default/default/template/page/head.phtml b/zzx/vendor/mahocommerce/maho/app/design/adminhtml/default/default/template/page/head.phtml
+index cc6df791f4..7ef824500a 100644
+--- a/zzx/vendor/mahocommerce/maho/app/design/adminhtml/default/default/template/page/head.phtml
++++ b/zzx/vendor/mahocommerce/maho/app/design/adminhtml/default/default/template/page/head.phtml
+@@ -24,6 +24,7 @@
+     var LOADING_TIMEOUT = <?= (int)$this->getLoadingTimeout() ?>;
+ </script>
+ 
++<?= $this->getChildHtml('before_cssjs') ?>
+ <?= $this->getCssJsHtml() ?>
+ 
+ <?php if ($this->getCanLoadTinyMce()): // TinyMCE is broken when loaded through index.php?>
+diff --git a/zzx/vendor/mahocommerce/maho/app/design/frontend/base/default/layout/page.xml b/zzx/vendor/mahocommerce/maho/app/design/frontend/base/default/layout/page.xml
+index c56b0dee1e..a6d7fe3250 100644
+--- a/zzx/vendor/mahocommerce/maho/app/design/frontend/base/default/layout/page.xml
++++ b/zzx/vendor/mahocommerce/maho/app/design/frontend/base/default/layout/page.xml
+@@ -27,6 +27,7 @@
+                 <action method="addJs"><script>mage/translate.js</script></action>
+                 <action method="addJs"><script>mage/cookies.js</script></action>
+ 
++                <block type="core/text_list" name="before_cssjs"/>
+                 <block type="page/js_cookie" name="js_cookies" template="page/js/cookie.phtml"/>
+ 
+                 <!-- Add vendor dependencies -->
+diff --git a/zzx/vendor/mahocommerce/maho/app/design/frontend/base/default/template/page/html/head.phtml b/zzx/vendor/mahocommerce/maho/app/design/frontend/base/default/template/page/html/head.phtml
+index 024f14d125..5d0edd52b0 100644
+--- a/zzx/vendor/mahocommerce/maho/app/design/frontend/base/default/template/page/html/head.phtml
++++ b/zzx/vendor/mahocommerce/maho/app/design/frontend/base/default/template/page/html/head.phtml
+@@ -19,6 +19,7 @@
+ <?= $this->getHreflang() ?>
+ <link rel="icon" type="image/svg+xml" href="<?= $this->getSkinUrl('images/favicon.svg') ?>" sizes="any">
+ <link rel="icon" type="image/png" href="<?= $this->getSkinUrl('images/favicon.png') ?>">
++<?= $this->getChildHtml('before_cssjs') ?>
+ <?= $this->getCssJsHtml() ?>
+ <?= $this->getChildHtml() ?>
+ <?= $this->helper('core/js')->getTranslatorScript() ?>
+# ##########################################################################################################################################
+# this is OpenMage PR 3679
+diff --git a/zzx/vendor/mahocommerce/maho/app/Mage.php b/zzx/vendor/mahocommerce/maho/app/Mage.php
+index 83e5fae313..9eb879a711 100644
+--- a/zzx/vendor/mahocommerce/maho/app/Mage.php
++++ b/zzx/vendor/mahocommerce/maho/app/Mage.php
+@@ -853,21 +853,61 @@
+     public static function printException(Throwable $e, $extra = '')
+     {
+         if (self::$_isDeveloperMode) {
+-            print '<pre>';
+-
++            if (PHP_SAPI != 'cli') {
++                print '<pre style="white-space:pre-wrap;">';
++            }
+             if (!empty($extra)) {
+                 print $extra . "\n\n";
+             }
+-
+-            print $e->getMessage() . "\n\n";
+-            print $e->getTraceAsString();
+-            print '</pre>';
++            print get_class($e) . ': ' . $e->getMessage() . "\n\n";
++            if (PHP_SAPI != 'cli') {
++                $file = $e->getFile();
++                $line = $e->getLine();
++                if (!empty($_SERVER['MAGE_VSCODE_LINKS']) || !empty($_ENV['MAGE_VSCODE_LINKS'])) {
++                    // https://code.visualstudio.com/docs/editor/command-line#_opening-vs-code-with-urls
++                    print preg_replace_callback('#(\#\d+ )([^(]+)\((\d+)\): #', static function ($data) {
++                        return
++                            $data[1] .
++                            '<a href="vscode://file/' . $data[2] . ':' . $data[3] . '">' . $data[2] . '</a>' .
++                            '(' . $data[3] . '): ';
++                    }, $e->getTraceAsString()) . "\n";
++                    print '  thrown in <a href="vscode://file/' . $file . ':' . $line . '"><b>' . $file . '</b></a>';
++                } elseif (!empty($_SERVER['MAGE_PHPSTORM_LINKS']) || !empty($_ENV['MAGE_PHPSTORM_LINKS'])) {
++                    // phpstorm doc
++                    print preg_replace_callback('#(\#\d+ )([^(]+)\((\d+)\): #', static function ($data) {
++                        return
++                            $data[1] .
++                            '<a href="phpstorm://open?url=file:/' . $data[2] . '&line=' . $data[3] . '">' . $data[2] . '</a>' .
++                            '(' . $data[3] . '): ';
++                    }, $e->getTraceAsString()) . "\n";
++                    print '  thrown in <a href="phpstorm://open?url=file:/' . $file . '&line=' . $line . '"><b>' . $file . '</b></a>';
++                } elseif (!empty($_SERVER['MAGE_OPENFILEEDITOR_LINKS']) || !empty($_ENV['MAGE_OPENFILEEDITOR_LINKS'])) {
++                    // https://github.com/luigifab/webext-openfileeditor
++                    print preg_replace_callback('#(\#\d+ )([^(]+)\((\d+)\): #', static function ($data) {
++                        return
++                            $data[1] .
++                            '<span class="openfileeditor" data-line="' . $data[3] . '">' . $data[2] . '</span>' .
++                            '(' . $data[3] . '): ';
++                    }, $e->getTraceAsString()) . "\n";
++                    print '  thrown in <span class="openfileeditor" data-line="' . $line . '"><b>' . $file . '</b></span>';
++                } else {
++                    print $e->getTraceAsString() . "\n";
++                    print '  thrown in <b>' . $file . '</b>';
++                }
++                print ' on line <b>' . $line . '</b>' . "\n";
++            } else {
++                print $e->getTraceAsString() . "\n";
++                print '  thrown in ' . $e->getFile() . ' on line ' . $e->getLine() . "\n";
++            }
++            if (PHP_SAPI != 'cli') {
++                print '</pre>';
++            }
+         } else {
+             $reportData = [
+-                (!empty($extra) ? $extra . "\n\n" : '') . $e->getMessage(),
+-                $e->getTraceAsString(),
++                (empty($extra) ? '' : $extra . "\n\n") . get_class($e) . ': ' . $e->getMessage(),
++                $e->getTraceAsString() . "\n" .
++                    '  thrown in ' . $e->getFile() . ' on line ' . $e->getLine()
+             ];
+-
+             // retrieve server data
+             if (isset($_SERVER['REQUEST_URI'])) {
+                 $reportData['url'] = $_SERVER['REQUEST_URI'];
+diff --git a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Api/Model/Server/Handler/Abstract.php b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Api/Model/Server/Handler/Abstract.php
+index 34ce0975d7..7bf9357a55 100644
+--- a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Api/Model/Server/Handler/Abstract.php
++++ b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Api/Model/Server/Handler/Abstract.php
+@@ -29,6 +29,7 @@
+      * @param int $errorCode
+      * @param string $errorMessage
+      * @param string $errorFile
++     * @param int $errLine
+      * @return bool
+      */
+     public function handlePhpError($errorCode, $errorMessage, $errorFile, $errLine)
+diff --git a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Block/Template.php b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Block/Template.php
+index 0dd2598769..aa2d4a5a68 100644
+--- a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Block/Template.php
++++ b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Block/Template.php
+@@ -250,15 +250,50 @@
+ <div style="position:relative; border:1px dotted {$cacheHintStatusColor}; margin:6px 2px; padding:18px 2px 2px 2px; zoom:1;">
+ <div style="position:absolute; left:0; top:0; padding:2px 5px; background:{$cacheHintStatusColor}; color:white; font:normal 11px Arial;
+ text-align:left !important; z-index:998;text-transform: none;" onmouseover="this.style.zIndex='999'"
+-onmouseout="this.style.zIndex='998'" title="{$fileNameForHint}">{$fileNameForHint}</div>
++onmouseout="this.style.zIndex='998'" title="{$fileNameForHint}">
+ HTML;
++            if (!empty($_SERVER['MAGE_VSCODE_LINKS']) || !empty($_ENV['MAGE_VSCODE_LINKS'])) {
++                // https://code.visualstudio.com/docs/editor/command-line#_opening-vs-code-with-urls
++                echo '<a href="vscode://file/' . MAHO_ROOT_DIR . DS . $fileNameForHint . '">' . $fileNameForHint . '</a></div>';
++            } elseif (!empty($_SERVER['MAGE_PHPSTORM_LINKS']) || !empty($_ENV['MAGE_PHPSTORM_LINKS'])) {
++                // phpstorm doc
++                echo '<a href="phpstorm://open?url=file:/' . MAHO_ROOT_DIR . DS . $fileNameForHint . '">' . $fileNameForHint . '</a></div>';
++            } elseif (!empty($_SERVER['MAGE_OPENFILEEDITOR_LINKS']) || !empty($_ENV['MAGE_OPENFILEEDITOR_LINKS'])) {
++                // https://github.com/luigifab/webext-openfileeditor
++                echo '<span class="openfileeditor" data-file="' . MAHO_ROOT_DIR . DS . $fileNameForHint . '">' . $fileNameForHint . '</span></div>';
++            } else {
++                echo $fileNameForHint . '</div>';
++            }
++
+             if (Mage::app()->getStore()->isAdmin() ? self::$_showTemplateHintsBlocksAdmin : self::$_showTemplateHintsBlocks) {
+                 $thisClass = static::class;
+                 echo <<<HTML
+ <div style="position:absolute; right:0; top:0; padding:2px 5px; background:{$cacheHintStatusColor}; color:blue; font:normal 11px Arial;
+ text-align:left !important; z-index:998;text-transform: none;" onmouseover="this.style.zIndex='999'" onmouseout="this.style.zIndex='998'"
+-title="{$thisClass}">{$thisClass}</div>
++title="{$thisClass}">
+ HTML;
++                try {
++                    if (!empty($_SERVER['MAGE_VSCODE_LINKS']) || !empty($_ENV['MAGE_VSCODE_LINKS'])) {
++                        $reflector = new ReflectionClass($thisClass);
++                        $fileClass = $reflector->getFileName();
++                        // https://code.visualstudio.com/docs/editor/command-line#_opening-vs-code-with-urls
++                        echo '<a href="vscode://file/' . $fileClass . '">' . $thisClass . '</a></div>';
++                    } elseif (!empty($_SERVER['MAGE_PHPSTORM_LINKS']) || !empty($_ENV['MAGE_PHPSTORM_LINKS'])) {
++                        $reflector = new ReflectionClass($thisClass);
++                        $fileClass = $reflector->getFileName();
++                        // phpstorm doc
++                        echo '<a href="phpstorm://open?url=file:/' . $fileClass . '">' . $thisClass . '</a></div>';
++                    } elseif (!empty($_SERVER['MAGE_OPENFILEEDITOR_LINKS']) || !empty($_ENV['MAGE_OPENFILEEDITOR_LINKS'])) {
++                        $reflector = new ReflectionClass($thisClass);
++                        $fileClass = $reflector->getFileName();
++                        // https://github.com/luigifab/webext-openfileeditor
++                        echo '<span class="openfileeditor" data-file="' . $fileClass . '">' . $thisClass . '</span></div>';
++                    } else {
++                        echo $thisClass . '</div>';
++                    }
++                } catch (Throwable $t) {
++                    echo $thisClass . '</div>';
++                }
+             }
+         }
+ 
+diff --git a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/functions.php b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/functions.php
+index 7b86d03f20..3bf0c501ae 100644
+--- a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/functions.php
++++ b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/functions.php
+@@ -128,11 +128,10 @@
+         default => $errorMessage .= "Unknown error ($errno)",
+     };
+ 
+-    $errorMessage .= ": {$errstr}  in {$errfile} on line {$errline}";
+     if (Mage::getIsDeveloperMode()) {
+-        throw new Exception($errorMessage);
++        Mage::printException(new ErrorException($errorMessage . ' ' . $errstr, 0, $errno, $errfile, $errline));
+     } else {
+-        Mage::log($errorMessage, Zend_Log::ERR);
++        Mage::log($errorMessage . ': ' . $errstr . ' in ' . $errfile . ' on line ' . $errline, Zend_Log::ERR);
+         return null;
+     }
+ }
+diff --git a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Cron/Model/Observer.php b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Cron/Model/Observer.php
+index 742a1b5503..b93f4392ae 100644
+--- a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Cron/Model/Observer.php
++++ b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Cron/Model/Observer.php
+@@ -319,7 +319,8 @@
+                 ->setFinishedAt(date(Varien_Db_Adapter_Pdo_Mysql::TIMESTAMP_FORMAT));
+         } catch (Exception $e) {
+             $schedule->setStatus($errorStatus)
+-                ->setMessages($e->__toString());
++                ->setMessages(get_class($e) . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n" .
++                    '  thrown in ' . $e->getFile() . ' on line ' . $e->getLine());
+         }
+ 
+         if ($schedule->getIsError()) {
+# ##########################################################################################################################################
+# secondly this is for Sentry module
+diff --git a/zzx/vendor/mahocommerce/maho/app/Mage.php b/zzx/vendor/mahocommerce/maho/app/Mage.php
+index 9eb879a711..d5d7d5a6b7 100644
+--- a/zzx/vendor/mahocommerce/maho/app/Mage.php
++++ b/zzx/vendor/mahocommerce/maho/app/Mage.php
+@@ -809,8 +809,7 @@
+ 
+             $message = addcslashes($message, '<?');
+             $loggers[$file]->log($message, $level);
+-        } catch (Exception $e) {
+-        }
++        } catch (Exception $e) { }
+     }
+ 
+     /**
+@@ -822,7 +821,16 @@
+             return;
+         }
+         $file = self::getStoreConfig('dev/log/exception_file');
+-        self::log("\n" . $e->__toString(), Zend_Log::ERR, $file);
++        self::log(
++            (self::$_isDeveloperMode ? 'isDeveloperMode:on ' : 'isDeveloperMode:off ') .
++                (self::getStoreConfigFlag('dev/sentry/active') ? 'sentry:on' : 'sentry:off') .
++                "\n" . $e->getMessage() . "\n" . $e->getTraceAsString() .
++                "\n" . '  thrown in ' . $e->getFile() . ' on line ' . $e->getLine(),
++            Zend_Log::ERR, $file);
++        if (!self::$_isDeveloperMode) {
++            global $sentry;
++            $sentry->captureException($e, null, ['source' => 'mage:logException']);
++        }
+     }
+ 
+     /**
+@@ -850,10 +858,17 @@
+     /**
+      * Display exception
+      */
+-    public static function printException(Throwable $e, $extra = '')
++    public static function printException(Throwable $e, $extra = '', $source = '')
+     {
++        try {
++            while (ob_get_level() > 0) {
++                ob_end_clean();
++            }
++        } catch (Exception $e) { }
++
+         if (self::$_isDeveloperMode) {
+             if (PHP_SAPI != 'cli') {
++                @http_response_code(500); // @todo  this prevent display of ajax grid error
+                 print '<pre style="white-space:pre-wrap;">';
+             }
+             if (!empty($extra)) {
+@@ -899,6 +914,7 @@
+                 print $e->getTraceAsString() . "\n";
+                 print '  thrown in ' . $e->getFile() . ' on line ' . $e->getLine() . "\n";
+             }
++            print '  catched by Mage::printException()' . $source . ' at ' . date('c') . "\n";
+             if (PHP_SAPI != 'cli') {
+                 print '</pre>';
+             }
+@@ -906,7 +922,8 @@
+             $reportData = [
+                 (empty($extra) ? '' : $extra . "\n\n") . get_class($e) . ': ' . $e->getMessage(),
+                 $e->getTraceAsString() . "\n" .
+-                    '  thrown in ' . $e->getFile() . ' on line ' . $e->getLine()
++                    '  thrown in ' . $e->getFile() . ' on line ' . $e->getLine() . "\n" .
++                    '  catched by Mage::printException()' . $source . ' at ' . date('c')
+             ];
+             // retrieve server data
+             if (isset($_SERVER['REQUEST_URI'])) {
+diff --git a/zzx/vendor/mahocommerce/maho/app/bootstrap.php b/zzx/vendor/mahocommerce/maho/app/bootstrap.php
+index 10c5506a62..32a8a36896 100644
+--- a/zzx/vendor/mahocommerce/maho/app/bootstrap.php
++++ b/zzx/vendor/mahocommerce/maho/app/bootstrap.php
+@@ -30,7 +30,7 @@
+ 
+ if (!empty($_SERVER['MAGE_IS_DEVELOPER_MODE']) || !empty($_ENV['MAGE_IS_DEVELOPER_MODE'])) {
+     Mage::setIsDeveloperMode(true);
+-
++    error_reporting(E_ALL);
+     ini_set('display_errors', '1');
+     ini_set('error_prepend_string', '<pre>');
+     ini_set('error_append_string', '</pre>');
+diff --git a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Api/Model/Server/Handler/Abstract.php b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Api/Model/Server/Handler/Abstract.php
+index 7bf9357a55..b2f50b9311 100644
+--- a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Api/Model/Server/Handler/Abstract.php
++++ b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Api/Model/Server/Handler/Abstract.php
+@@ -32,9 +32,11 @@
+      * @param int $errLine
+      * @return bool
+      */
+-    public function handlePhpError($errorCode, $errorMessage, $errorFile, $errLine)
++    public function handlePhpError($errorCode, $errorMessage, $errorFile, $errLine, $context = [])
+     {
+         Mage::log($errorMessage . ' in ' . $errorFile . ' on line ' . $errLine, Zend_Log::ERR);
++        global $sentry;
++        $sentry->handleError($errorCode, $errorMessage, $errorFile, $errLine, $context);
+         if (in_array($errorCode, [E_ERROR, E_USER_ERROR, E_RECOVERABLE_ERROR])) {
+             $this->_fault('internal');
+         }
+diff --git a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Model/App.php b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Model/App.php
+index 199ccff0f7..1a648943da 100644
+--- a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Model/App.php
++++ b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Model/App.php
+@@ -511,9 +511,17 @@
+             $this->_checkCookieStore($scopeType);
+             $this->_checkGetStore($scopeType);
+         }
+-        $this->_useSessionInUrl = $this->getStore()->getConfig(
+-            Mage_Core_Model_Session_Abstract::XML_PATH_USE_FRONTEND_SID,
+-        );
++
++        // @see https://github.com/luigifab/maho-sentry
++        $store = $this->getStore();
++        global $sentry;
++        if (!$sentry) {
++            $sentry = new Luigifab_Sentry_Model_Client();
++            $sentry->initHandler($store);
++        }
++
++        $this->_useSessionInUrl = $store->getConfig(Mage_Core_Model_Session_Abstract::XML_PATH_USE_FRONTEND_SID);
++
+         return $this;
+     }
+ 
+diff --git a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Model/Email/Template/Filter.php b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Model/Email/Template/Filter.php
+index 3d3a82f869..be4597264d 100644
+--- a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Model/Email/Template/Filter.php
++++ b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/Model/Email/Template/Filter.php
+@@ -542,6 +542,9 @@
+         try {
+             $value = parent::filter($value);
+         } catch (Exception $e) {
++            if (Mage::getIsDeveloperMode()) {
++                throw $e;
++            }
+             $value = '';
+             Mage::logException($e);
+         }
+@@ -563,6 +566,9 @@
+         try {
+             $result = parent::_getVariable($value, $default);
+         } catch (Exception $e) {
++            if (Mage::getIsDeveloperMode()) {
++                throw $e;
++            }
+             $result = '';
+             Mage::logException($e);
+         }
+diff --git a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/functions.php b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/functions.php
+index 3bf0c501ae..5da848f7ba 100644
+--- a/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/functions.php
++++ b/zzx/vendor/mahocommerce/maho/app/code/core/Mage/Core/functions.php
+@@ -129,7 +129,7 @@
+     };
+ 
+     if (Mage::getIsDeveloperMode()) {
+-        Mage::printException(new ErrorException($errorMessage . ' ' . $errstr, 0, $errno, $errfile, $errline));
++        Mage::printException(new ErrorException($errorMessage . ' ' . $errstr, 0, $errno, $errfile, $errline), '', ' via mageCoreErrorHandler()');
+     } else {
+         Mage::log($errorMessage . ': ' . $errstr . ' in ' . $errfile . ' on line ' . $errline, Zend_Log::ERR);
+         return null;
