@@ -1,7 +1,7 @@
 <?php
 /**
  * Forked from https://github.com/getsentry/magento-amg-sentry-extension
- * Updated L/10/03/2025
+ * Updated J/01/05/2025
  *
  * Copyright 2012      | Jean Roussel <contact~jean-roussel~fr>
  * Copyright 2022-2025 | Fabrice Creuzot (luigifab) <code~luigifab~fr>
@@ -331,7 +331,7 @@ class Luigifab_Sentry_Model_Client {
 			$options['tags']['runtime'] = 'PHP '.PHP_VERSION;
 
 		if (empty($options['tags']['engine']))
-			$options['tags']['engine'] = 'Maho '.Mage::getMahoVersion();
+			$options['tags']['engine'] = 'Maho '.Mage::getVersion();
 
 		$this->_serverUrl = sprintf('%s://%s%s/api/%s/store/', $scheme, $netloc, $path, $project);
 		//$this->_serverUrl = sprintf('%s://%s%s/api/store/', $scheme, $netloc, $path); // not working anymore

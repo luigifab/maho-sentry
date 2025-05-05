@@ -1,7 +1,7 @@
 <?php
 /**
  * Created D/09/04/2023
- * Updated L/10/03/2025
+ * Updated J/01/05/2025
  *
  * Copyright 2012      | Jean Roussel <contact~jean-roussel~fr>
  * Copyright 2022-2025 | Fabrice Creuzot (luigifab) <code~luigifab~fr>
@@ -52,7 +52,7 @@ Sentry.onLoad(function () {
  Sentry.setTag("logger", "<?php echo Mage::getStoreConfig('dev/sentry/logger') ?>");
  <?php if (Mage::getSingleton('admin/session')->isLoggedIn()): ?>
   Sentry.setTag("runtime", "PHP <?php echo PHP_VERSION ?>");
-  Sentry.setTag("engine", "Maho <?php echo Mage::getMahoVersion() ?>");
+  Sentry.setTag("engine", "Maho <?php echo Mage::getVersion() ?>");
   Sentry.setUser({ id: "<?php echo Mage::getSingleton('admin/session')->getUser()->getUsername() ?>" });
  <?php endif ?>
 });
